@@ -10,11 +10,15 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 
 # Import local modules
-from .models import *
-from .database import connect_to_mongo, close_mongo_connection, get_document, get_documents, create_document, update_document, delete_document, count_documents, aggregate_documents
-from .auth import authenticate_user, create_access_token, get_current_user, get_current_user_optional, get_password_hash, verify_password
-from .sports_data import get_all_sports, get_sport_by_id
-from .utils import generate_id, validate_date_format, validate_time_format, is_valid_base64_image, generate_avatar_base64, calculate_mutual_events, generate_event_tags, sanitize_text, get_user_badges
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from models import *
+from database import connect_to_mongo, close_mongo_connection, get_document, get_documents, create_document, update_document, delete_document, count_documents, aggregate_documents
+from auth import authenticate_user, create_access_token, get_current_user, get_current_user_optional, get_password_hash, verify_password
+from sports_data import get_all_sports, get_sport_by_id
+from utils import generate_id, validate_date_format, validate_time_format, is_valid_base64_image, generate_avatar_base64, calculate_mutual_events, generate_event_tags, sanitize_text, get_user_badges
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
