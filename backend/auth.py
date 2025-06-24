@@ -4,8 +4,12 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from .models import User
-from .database import get_document
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from models import User
+from database import get_document
 import os
 
 # Security setup
