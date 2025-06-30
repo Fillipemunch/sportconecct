@@ -134,8 +134,12 @@ export const friendsAPI = {
     return response.data;
   },
 
-  getSuggestions: async (limit = 10) => {
-    const response = await api.get('/friends/suggestions', { params: { limit } });
+  getSuggestions: async (limit = 10, search = '') => {
+    const params = { limit };
+    if (search && search.trim()) {
+      params.search = search.trim();
+    }
+    const response = await api.get('/friends/suggestions', { params });
     return response.data;
   },
 
