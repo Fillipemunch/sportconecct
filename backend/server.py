@@ -334,9 +334,14 @@ async def get_events(
     limit: int = Query(50, le=100),
     skip: int = Query(0, ge=0)
 ):
-    """Get events with filters"""
+    """Get events with filters - excluding test data"""
     try:
-        query = {"status": "active"}
+        query = {
+            "status": "active",
+            # Exclude test events
+            "title": {"$not": {"$regex": "test|temp|cyej2r1l", "$options": "i"}},
+            "title_da": {"$not": {"$regex": "test|temp|cyej2r1l", "$options": "i"}}
+        }
         
         if sport and sport != "all":
             query["sport"] = sport
