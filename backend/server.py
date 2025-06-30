@@ -874,10 +874,76 @@ async def remove_friend(
             detail="Failed to remove friend"
         )
 
-# Basic hello world endpoint
-@api_router.get("/")
-async def root():
-    return {"message": "SportConnect API is running!"}
+# Utility endpoint to clean test data (admin only)
+@api_router.delete("/admin/cleanup-test-data")
+async def cleanup_test_data(current_user: User = Depends(get_current_user)):
+    """Clean up test data - admin only"""
+    try:
+        # Only allow admin users
+        if current_user.email != "admin@sportconnect.dk":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin access required"
+            )
+        
+        # Delete test users (users with test names or temp emails)
+        test_patterns = [
+            {"name": {"$regex": "test", "$options": "i"}},
+            {"name": {"$regex": "temp", "$options": "i"}},
+            {"email": {"$regex": "test", "$options": "i"}},
+            {"email": {"$regex": "temp", "$options": "i"}},
+            {"name": {"$regex": "cyej2r1l", "$options": "i"}},
+            {"bio": {"$regex": "temp", "$options": "i"}}
+        ]
+        
+        # Get test users first
+        test_users = []
+        for pattern in test_patterns:
+            users = await get_documents("users", pattern)
+            test_users.extend([u["id"] for u in users])
+        
+        test_user_ids = list(set(test_users))
+        
+        # Delete test events (events created by test users or with test names)
+        await delete_documents("events", {
+            "$or": [
+                {"organizer_id": {"$in": test_user_ids}},
+                {"title": {"$regex": "test", "$options": "i"}},
+                {"title_da": {"$regex": "test", "$options": "i"}}
+            ]
+        })
+        
+        # Delete test messages
+        await delete_documents("messages", {"user_id": {"$in": test_user_ids}})
+        
+        # Delete test friendships
+        await delete_documents("friendships", {
+            "$or": [
+                {"user_id": {"$in": test_user_ids}},
+                {"friend_id": {"$in": test_user_ids}}
+            ]
+        })
+        
+        # Delete test users
+        for pattern in test_patterns:
+            await delete_documents("users", pattern)
+        
+        return {"message": "Test data cleaned successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Cleanup error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to cleanup test data"
+        )
+
+async def delete_documents(collection_name: str, query: dict):
+    """Delete multiple documents from a collection"""
+    collection = await get_collection(collection_name)
+    result = await collection.delete_many(query)
+    return result.deleted_count
 
 # Include the router in the main app
 app.include_router(api_router)
