@@ -289,7 +289,11 @@ const Auth = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="skill_level">{t('auth.skillLevel')}</Label>
-                <Select onValueChange={(value) => setRegisterForm(prev => ({ ...prev, skill_level: value }))}>
+                <Select 
+                  value={registerForm.skill_level}
+                  onValueChange={(value) => setRegisterForm(prev => ({ ...prev, skill_level: value }))}
+                  required
+                >
                   <SelectTrigger className="border-gray-300 focus:border-orange-500 focus:ring-orange-500">
                     <SelectValue placeholder={`Select ${t('auth.skillLevel').toLowerCase()}`} />
                   </SelectTrigger>
