@@ -418,7 +418,305 @@ backend:
         comment: "Get event messages endpoint is working correctly. Returns a list of messages for an event."
 
 frontend:
-  # Frontend tasks would be listed here
+  - task: "Authentication - User Registration"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Auth.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test user registration functionality with all required fields."
+
+  - task: "Authentication - User Login"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Auth.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test user login functionality."
+
+  - task: "Authentication - Protected Routes"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to verify protected routes redirect to auth page when not logged in."
+
+  - task: "Dashboard - Load User Statistics"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if user statistics are properly loaded and displayed."
+
+  - task: "Dashboard - Search and Filter Events"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test search and filter functionality for events."
+
+  - task: "Dashboard - Join Events"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test joining events from the dashboard."
+
+  - task: "Dashboard - Upcoming Events Section"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if upcoming events section displays correctly."
+
+  - task: "Events - Create New Event"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/CreateEvent.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test event creation with all required fields."
+
+  - task: "Events - View Event Details"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/EventDetails.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test viewing event details page."
+
+  - task: "Events - Join/Leave Events"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/EventDetails.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test joining and leaving events from the event details page."
+
+  - task: "Events - Chat Functionality"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/EventDetails.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test chat functionality for event participants."
+
+  - task: "Events - Search and Filtering"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Events.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test search and filtering functionality on the events page."
+
+  - task: "Profile - Edit Profile Information"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Profile.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test editing profile information."
+
+  - task: "Profile - Update Sports Preferences"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Profile.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test updating sports preferences."
+
+  - task: "Profile - View User Statistics"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Profile.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test if user statistics are properly displayed on the profile page."
+
+  - task: "Friends - View Friends List"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Friends.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test viewing friends list."
+
+  - task: "Friends - Search for Friend Suggestions"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Friends.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test searching for friend suggestions."
+
+  - task: "Friends - Add Friends"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Friends.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test adding friends from suggestions."
+
+  - task: "Friends - Remove Friends"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Friends.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test removing friends."
+
+  - task: "Friends - Chat with Friends"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/ChatModal.js"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test chat functionality with friends."
+
+  - task: "General UX - Language Switching"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/contexts/LanguageContext.js"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test language switching between English and Danish."
+
+  - task: "General UX - Responsive Design"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/Layout.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test responsive design on different screen sizes."
+
+  - task: "General UX - Loading States"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/pages/Dashboard.js"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test loading states across the application."
+
+  - task: "General UX - Navigation"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/components/Layout.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test navigation between pages."
+
+  - task: "General UX - Toast Notifications"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/src/hooks/use-toast.js"
+    stuck_count: 0
+    priority: "low"
+    needs_retesting: true
+    status_history:
+      - working: "NA"
+        agent: "testing"
+        comment: "Need to test toast notifications for user actions."
 
 metadata:
   created_by: "testing_agent"
