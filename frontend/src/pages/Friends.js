@@ -85,7 +85,8 @@ const Friends = () => {
   );
 
   const filteredSuggestions = suggestions.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleAddFriend = async (userId) => {
