@@ -33,6 +33,7 @@ const Friends = () => {
   const [sports, setSports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);
+  const [chatModal, setChatModal] = useState({ isOpen: false, friend: null });
 
   useEffect(() => {
     loadData();
