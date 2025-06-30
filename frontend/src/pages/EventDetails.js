@@ -7,7 +7,8 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
 import { Textarea } from '../components/ui/textarea';
-import { mockEvents, mockSports, mockMessages, mockUsers } from '../data/mock';
+import { useToast } from '../hooks/use-toast';
+import { eventsAPI, sportsAPI } from '../services/api';
 import { 
   Calendar, 
   MapPin, 
@@ -19,7 +20,8 @@ import {
   User,
   Star,
   Shield,
-  DollarSign
+  DollarSign,
+  Loader2
 } from 'lucide-react';
 
 const EventDetails = () => {
@@ -27,35 +29,80 @@ const EventDetails = () => {
   const { user } = useAuth();
   const { language, t } = useLanguage();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [event, setEvent] = useState(null);
+  const [sports, setSports] = useState([]);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [showChat, setShowChat] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
 
   useEffect(() => {
-    const foundEvent = mockEvents.find(e => e.id === id);
-    if (foundEvent) {
-      setEvent(foundEvent);
-      setMessages(mockMessages.filter(msg => msg.eventId === id));
-    }
+    loadEventData();
+    loadSports();
   }, [id]);
 
-  if (!event) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading event...</p>
-        </div>
-      </div>
-    );
-  }
+  const loadEventData = async () => {
+    try {
+      setLoading(true);
+      const eventData = await eventsAPI.getById(id);
+      setEvent(eventData);
+    } catch (error) {
+      console.error('Error loading event:', error);
+      toast({
+        title: t('common.error'),
+        description: 'Failed to load event details',
+        variant: 'destructive'
+      });
+      navigate('/events');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const sport = mockSports.find(s => s.id === event.sport) || { name: event.sport, nameDa: event.sport, icon: '🏃', color: '#6B7280' };
-  const organizer = mockUsers.find(u => u.id === event.organizerId) || { name: event.organizer, photo: null };
-  const isParticipating = event.participants.includes(user?.id);
-  const isFull = event.currentParticipants >= event.maxParticipants;
-  const isOrganizer = event.organizerId === user?.id;
+  const loadSports = async () => {
+    try {
+      const sportsData = await sportsAPI.getAll();
+      setSports(sportsData);
+    } catch (error) {
+      console.error('Error loading sports:', error);
+    }
+  };
+
+  const loadMessages = async () => {
+    if (!event || !isParticipating) return;
+    
+    try {
+      setLoadingMessages(true);
+      const messagesData = await eventsAPI.getMessages(id);
+      setMessages(messagesData);
+    } catch (error) {
+      console.error('Error loading messages:', error);
+      toast({
+        title: t('common.error'),
+        description: 'Failed to load messages',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showChat && event && isParticipating) {
+      loadMessages();
+    }
+  }, [showChat, event]);
+
+  const getSportInfo = (sportId) => {
+    return sports.find(s => s.id === sportId) || { name: sportId, name_da: sportId, icon: '🏃', color: '#6B7280' };
+  };
+
+  const isParticipating = event?.participants?.includes(user?.id);
+  const isFull = event?.current_participants >= event?.max_participants;
+  const isOrganizer = event?.organizer_id === user?.id;
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -67,37 +114,97 @@ const EventDetails = () => {
     });
   };
 
-  const handleJoinEvent = () => {
-    setEvent(prev => ({
-      ...prev,
-      participants: [...prev.participants, user.id],
-      currentParticipants: prev.currentParticipants + 1
-    }));
-  };
-
-  const handleLeaveEvent = () => {
-    setEvent(prev => ({
-      ...prev,
-      participants: prev.participants.filter(id => id !== user.id),
-      currentParticipants: prev.currentParticipants - 1
-    }));
-  };
-
-  const handleSendMessage = () => {
-    if (newMessage.trim() && isParticipating) {
-      const message = {
-        id: Date.now().toString(),
-        eventId: event.id,
-        userId: user.id,
-        userName: user.name,
-        message: newMessage,
-        messageDa: newMessage, // In real app, this would be translated
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, message]);
-      setNewMessage('');
+  const handleJoinEvent = async () => {
+    try {
+      await eventsAPI.join(id);
+      await loadEventData(); // Reload to get updated data
+      toast({
+        title: t('common.success'),
+        description: 'Successfully joined the event!'
+      });
+    } catch (error) {
+      console.error('Error joining event:', error);
+      toast({
+        title: t('common.error'),
+        description: error.response?.data?.detail || 'Failed to join event',
+        variant: 'destructive'
+      });
     }
   };
+
+  const handleLeaveEvent = async () => {
+    try {
+      await eventsAPI.leave(id);
+      await loadEventData(); // Reload to get updated data
+      toast({
+        title: t('common.success'),
+        description: 'Successfully left the event!'
+      });
+    } catch (error) {
+      console.error('Error leaving event:', error);
+      toast({
+        title: t('common.error'),
+        description: error.response?.data?.detail || 'Failed to leave event',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !isParticipating || sendingMessage) return;
+
+    try {
+      setSendingMessage(true);
+      const messageData = {
+        message: newMessage,
+        message_da: newMessage, // In real app, this could be translated
+        event_id: id
+      };
+      
+      await eventsAPI.sendMessage(id, messageData);
+      setNewMessage('');
+      await loadMessages(); // Reload messages
+      toast({
+        title: t('common.success'),
+        description: 'Message sent!'
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: t('common.error'),
+        description: error.response?.data?.detail || 'Failed to send message',
+        variant: 'destructive'
+      });
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-orange-500" />
+          <p className="text-gray-600">Loading event...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">Event not found</p>
+          <Button onClick={() => navigate('/events')} className="mt-4">
+            Back to Events
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const sport = getSportInfo(event.sport);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-6">
@@ -128,7 +235,7 @@ const EventDetails = () => {
                 variant="secondary" 
                 className="bg-white/90 text-gray-700 text-sm"
               >
-                {t(`skill.${event.skillLevel}`)}
+                {t(`skill.${event.skill_level}`)}
               </Badge>
             </div>
           </div>
@@ -137,14 +244,14 @@ const EventDetails = () => {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h1 className="text-3xl font-bold mb-2">
-                  {language === 'da' ? event.titleDa : event.title}
+                  {language === 'da' ? event.title_da : event.title}
                 </h1>
                 <Badge 
                   variant="outline" 
                   className="text-lg px-3 py-1"
                   style={{ color: sport.color, borderColor: sport.color }}
                 >
-                  {sport.icon} {language === 'da' ? sport.nameDa : sport.name}
+                  {sport.icon} {language === 'da' ? sport.name_da : sport.name}
                 </Badge>
               </div>
               <div className="text-right">
@@ -162,7 +269,7 @@ const EventDetails = () => {
             </div>
 
             <p className="text-gray-600 text-lg mb-6">
-              {language === 'da' ? event.descriptionDa : event.description}
+              {language === 'da' ? event.description_da : event.description}
             </p>
 
             {/* Event Details Grid */}
@@ -188,7 +295,7 @@ const EventDetails = () => {
                   <Users className="text-orange-500" size={20} />
                   <div>
                     <p className="font-medium">{t('event.participants')}</p>
-                    <p className="text-gray-600">{event.currentParticipants}/{event.maxParticipants} {t('event.participants')}</p>
+                    <p className="text-gray-600">{event.current_participants}/{event.max_participants} {t('event.participants')}</p>
                   </div>
                 </div>
               </div>
@@ -208,13 +315,7 @@ const EventDetails = () => {
                   <div>
                     <p className="font-medium">{t('event.organizer')}</p>
                     <div className="flex items-center space-x-2 mt-1">
-                      <Avatar className="h-6 w-6">
-                        <AvatarImage src={organizer.photo} alt={organizer.name} />
-                        <AvatarFallback className="text-xs">
-                          {organizer.name.split(' ').map(n => n[0]).join('')}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-gray-600">{organizer.name}</span>
+                      <span className="text-gray-600">{event.organizer_name}</span>
                       {isOrganizer && <Shield className="text-orange-500" size={16} />}
                     </div>
                   </div>
@@ -225,13 +326,25 @@ const EventDetails = () => {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3">
               {isParticipating ? (
-                <Button
-                  onClick={handleLeaveEvent}
-                  variant="outline"
-                  className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
-                >
-                  {t('event.leave')}
-                </Button>
+                <>
+                  {!isOrganizer && (
+                    <Button
+                      onClick={handleLeaveEvent}
+                      variant="outline"
+                      className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      {t('event.leave')}
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => setShowChat(!showChat)}
+                    variant="outline"
+                    className="flex-1 sm:flex-none"
+                  >
+                    <MessageCircle className="mr-2" size={16} />
+                    {t('event.chat')}
+                  </Button>
+                </>
               ) : isFull ? (
                 <Button disabled className="flex-1">
                   Event Full
@@ -244,17 +357,6 @@ const EventDetails = () => {
                   {t('event.join')}
                 </Button>
               )}
-              
-              {isParticipating && (
-                <Button
-                  onClick={() => setShowChat(!showChat)}
-                  variant="outline"
-                  className="flex-1 sm:flex-none"
-                >
-                  <MessageCircle className="mr-2" size={16} />
-                  {t('event.chat')}
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -264,17 +366,14 @@ const EventDetails = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Users size={20} />
-              <span>Participants ({event.currentParticipants})</span>
+              <span>Participants ({event.current_participants})</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {event.participants.map(participantId => {
-                const participant = mockUsers.find(u => u.id === participantId) || 
-                  { id: participantId, name: 'Unknown User', photo: null };
-                
-                return (
-                  <div key={participantId} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
+            {event.participant_details && event.participant_details.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {event.participant_details.map(participant => (
+                  <div key={participant.id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={participant.photo} alt={participant.name} />
                       <AvatarFallback className="text-xs">
@@ -283,14 +382,16 @@ const EventDetails = () => {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{participant.name}</p>
-                      {participantId === event.organizerId && (
+                      {participant.id === event.organizer_id && (
                         <p className="text-xs text-orange-600">Organizer</p>
                       )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No participant details available</p>
+            )}
           </CardContent>
         </Card>
 
@@ -306,26 +407,35 @@ const EventDetails = () => {
             <CardContent className="space-y-4">
               {/* Messages */}
               <div className="space-y-3 max-h-64 overflow-y-auto">
-                {messages.map(message => (
-                  <div key={message.id} className="flex items-start space-x-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs">
-                        {message.userName.split(' ').map(n => n[0]).join('')}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <p className="text-sm font-medium">{message.userName}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(message.timestamp).toLocaleTimeString()}
+                {loadingMessages ? (
+                  <div className="text-center py-4">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">Loading messages...</p>
+                  </div>
+                ) : messages.length > 0 ? (
+                  messages.map(message => (
+                    <div key={message.id} className="flex items-start space-x-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="text-xs">
+                          {message.user_name.split(' ').map(n => n[0]).join('')}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <p className="text-sm font-medium">{message.user_name}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(message.created_at).toLocaleTimeString()}
+                          </p>
+                        </div>
+                        <p className="text-sm text-gray-700 mt-1">
+                          {language === 'da' ? message.message_da : message.message}
                         </p>
                       </div>
-                      <p className="text-sm text-gray-700 mt-1">
-                        {language === 'da' ? message.messageDa : message.message}
-                      </p>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No messages yet. Start the conversation!</p>
+                )}
               </div>
 
               {/* Message Input */}
@@ -345,10 +455,14 @@ const EventDetails = () => {
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!newMessage.trim()}
+                  disabled={!newMessage.trim() || sendingMessage}
                   className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
                 >
-                  <Send size={16} />
+                  {sendingMessage ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
                 </Button>
               </div>
             </CardContent>

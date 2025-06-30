@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -10,7 +10,7 @@ import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { useToast } from '../hooks/use-toast';
-import { mockSports } from '../data/mock';
+import { sportsAPI, userAPI } from '../services/api';
 import { 
   User, 
   Edit, 
@@ -24,15 +24,18 @@ import {
   Users,
   Plus,
   Check,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { language, t } = useLanguage();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sports, setSports] = useState([]);
+  const [userStats, setUserStats] = useState(null);
 
   const [editForm, setEditForm] = useState({
     name: user?.name || '',
@@ -40,28 +43,69 @@ const Profile = () => {
     location: user?.location || '',
     bio: user?.bio || '',
     sports: user?.sports || [],
-    skillLevel: user?.skillLevel || ''
+    skill_level: user?.skill_level || ''
   });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      setEditForm({
+        name: user.name || '',
+        age: user.age || '',
+        location: user.location || '',
+        bio: user.bio || '',
+        sports: user.sports || [],
+        skill_level: user.skill_level || ''
+      });
+    }
+  }, [user]);
+
+  const loadData = async () => {
+    try {
+      const [sportsData, statsData] = await Promise.all([
+        sportsAPI.getAll(),
+        userAPI.getStats()
+      ]);
+      setSports(sportsData);
+      setUserStats(statsData);
+    } catch (error) {
+      console.error('Error loading profile data:', error);
+    }
+  };
 
   const handleSave = async () => {
     setLoading(true);
     
     try {
-      // Mock save - in real app this would call backend
-      setTimeout(() => {
-        toast({
-          title: t('common.success'),
-          description: 'Profile updated successfully!'
-        });
-        setIsEditing(false);
-        setLoading(false);
-      }, 1000);
+      const updateData = {
+        name: editForm.name,
+        age: parseInt(editForm.age) || user.age,
+        location: editForm.location,
+        bio: editForm.bio,
+        sports: editForm.sports,
+        skill_level: editForm.skill_level
+      };
+
+      const updatedUser = await userAPI.updateProfile(updateData);
+      updateUser(updatedUser);
+      await loadData(); // Reload stats
+      
+      toast({
+        title: t('common.success'),
+        description: 'Profile updated successfully!'
+      });
+      setIsEditing(false);
     } catch (error) {
+      console.error('Error updating profile:', error);
       toast({
         title: t('common.error'),
-        description: error.message || t('common.error'),
+        description: error.response?.data?.detail || 'Failed to update profile',
         variant: 'destructive'
       });
+    } finally {
       setLoading(false);
     }
   };
@@ -73,7 +117,7 @@ const Profile = () => {
       location: user?.location || '',
       bio: user?.bio || '',
       sports: user?.sports || [],
-      skillLevel: user?.skillLevel || ''
+      skill_level: user?.skill_level || ''
     });
     setIsEditing(false);
   };
@@ -88,7 +132,7 @@ const Profile = () => {
   };
 
   const getSportInfo = (sportId) => {
-    return mockSports.find(sport => sport.id === sportId) || { name: sportId, nameDa: sportId, icon: '🏃', color: '#6B7280' };
+    return sports.find(sport => sport.id === sportId) || { name: sportId, name_da: sportId, icon: '🏃', color: '#6B7280' };
   };
 
   return (
@@ -118,7 +162,7 @@ const Profile = () => {
                     className="bg-green-500 hover:bg-green-600 text-white"
                   >
                     {loading ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Check size={16} />
                     )}
@@ -185,8 +229,8 @@ const Profile = () => {
                     <Target size={16} />
                     <span>{isEditing ? (
                       <Select 
-                        value={editForm.skillLevel} 
-                        onValueChange={(value) => setEditForm(prev => ({ ...prev, skillLevel: value }))}
+                        value={editForm.skill_level} 
+                        onValueChange={(value) => setEditForm(prev => ({ ...prev, skill_level: value }))}
                       >
                         <SelectTrigger className="w-32 h-8 bg-white/80">
                           <SelectValue />
@@ -197,7 +241,7 @@ const Profile = () => {
                           <SelectItem value="advanced">{t('skill.advanced')}</SelectItem>
                         </SelectContent>
                       </Select>
-                    ) : t(`skill.${user?.skillLevel}`)}</span>
+                    ) : t(`skill.${user?.skill_level}`)}</span>
                   </div>
                 </div>
               </div>
@@ -220,39 +264,41 @@ const Profile = () => {
         </Card>
 
         {/* Statistics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-orange-400 to-red-500 text-white border-0 hover:scale-105 transition-transform duration-200">
-            <CardContent className="p-4 text-center">
-              <Calendar className="mx-auto mb-2" size={24} />
-              <p className="text-2xl font-bold">{user?.eventsParticipated || 0}</p>
-              <p className="text-sm opacity-90">{t('profile.eventsParticipated')}</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-green-400 to-emerald-500 text-white border-0 hover:scale-105 transition-transform duration-200">
-            <CardContent className="p-4 text-center">
-              <Plus className="mx-auto mb-2" size={24} />
-              <p className="text-2xl font-bold">{user?.eventsCreated || 0}</p>
-              <p className="text-sm opacity-90">{t('profile.eventsCreated')}</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-blue-400 to-indigo-500 text-white border-0 hover:scale-105 transition-transform duration-200">
-            <CardContent className="p-4 text-center">
-              <Trophy className="mx-auto mb-2" size={24} />
-              <p className="text-2xl font-bold">{user?.badges?.length || 0}</p>
-              <p className="text-sm opacity-90">Badges</p>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-gradient-to-br from-purple-400 to-pink-500 text-white border-0 hover:scale-105 transition-transform duration-200">
-            <CardContent className="p-4 text-center">
-              <Activity className="mx-auto mb-2" size={24} />
-              <p className="text-2xl font-bold">{user?.sports?.length || 0}</p>
-              <p className="text-sm opacity-90">Sports</p>
-            </CardContent>
-          </Card>
-        </div>
+        {userStats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-orange-400 to-red-500 text-white border-0 hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 text-center">
+                <Calendar className="mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold">{userStats.events_participated}</p>
+                <p className="text-sm opacity-90">{t('profile.eventsParticipated')}</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-green-400 to-emerald-500 text-white border-0 hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 text-center">
+                <Plus className="mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold">{userStats.events_created}</p>
+                <p className="text-sm opacity-90">{t('profile.eventsCreated')}</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-blue-400 to-indigo-500 text-white border-0 hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 text-center">
+                <Trophy className="mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold">{userStats.badges_count}</p>
+                <p className="text-sm opacity-90">Badges</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gradient-to-br from-purple-400 to-pink-500 text-white border-0 hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 text-center">
+                <Users className="mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold">{userStats.friends_count}</p>
+                <p className="text-sm opacity-90">Friends</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Sports */}
         <Card className="bg-white/90 backdrop-blur-lg border-white/20">
@@ -267,7 +313,7 @@ const Profile = () => {
               <div className="space-y-4">
                 <p className="text-sm text-gray-600">Select your favorite sports:</p>
                 <div className="flex flex-wrap gap-2">
-                  {mockSports.map(sport => (
+                  {sports.map(sport => (
                     <Badge
                       key={sport.id}
                       variant={editForm.sports.includes(sport.id) ? "default" : "outline"}
@@ -279,7 +325,7 @@ const Profile = () => {
                       onClick={() => toggleSport(sport.id)}
                     >
                       <span className="mr-1">{sport.icon}</span>
-                      {language === 'da' ? sport.nameDa : sport.name}
+                      {language === 'da' ? sport.name_da : sport.name}
                     </Badge>
                   ))}
                 </div>
@@ -295,7 +341,7 @@ const Profile = () => {
                       style={{ backgroundColor: sport.color }}
                     >
                       <span className="mr-2">{sport.icon}</span>
-                      {language === 'da' ? sport.nameDa : sport.name}
+                      {language === 'da' ? sport.name_da : sport.name}
                     </Badge>
                   );
                 }) || (
