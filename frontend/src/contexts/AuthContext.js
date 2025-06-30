@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { getCurrentUser, setCurrentUser, logout as logoutUser } from '../data/mock';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -16,54 +16,40 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const currentUser = getCurrentUser();
-    if (currentUser) {
-      setUser(currentUser);
+    const token = localStorage.getItem('token');
+    const currentUser = localStorage.getItem('currentUser');
+    
+    if (token && currentUser) {
+      try {
+        setUser(JSON.parse(currentUser));
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        authAPI.logout();
+      }
     }
     setLoading(false);
   }, []);
 
   const login = async (email, password) => {
-    // Mock login - in real app this would call backend
-    const mockUser = {
-      id: '1',
-      name: 'Lars Hansen',
-      email: email,
-      age: 28,
-      photo: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjNEY0NkU1Ii8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIyMCIgZm9udC1mYW1pbHk9IkFyaWFsIj5MSDwvdGV4dD4KPC9zdmc+',
-      sports: ['football', 'running', 'cycling'],
-      skillLevel: 'intermediate',
-      location: 'Copenhagen, Denmark',
-      bio: 'Passionate about staying active and meeting new people through sports!',
-      eventsParticipated: 15,
-      eventsCreated: 3,
-      badges: ['Early Bird', 'Team Player', 'Consistent Performer']
-    };
-    
-    setCurrentUser(mockUser);
-    setUser(mockUser);
-    return mockUser;
+    const response = await authAPI.login(email, password);
+    setUser(response.user);
+    return response.user;
   };
 
   const register = async (userData) => {
-    // Mock registration - in real app this would call backend
-    const newUser = {
-      id: Date.now().toString(),
-      ...userData,
-      photo: `data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjMTA5OEZGIi8+Cjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIyMCIgZm9udC1mYW1pbHk9IkFyaWFsIj4ke userData.name.split(' ').map(n => n[0]).join('')}</text></svg>`,
-      eventsParticipated: 0,
-      eventsCreated: 0,
-      badges: []
-    };
-    
-    setCurrentUser(newUser);
-    setUser(newUser);
-    return newUser;
+    const response = await authAPI.register(userData);
+    setUser(response.user);
+    return response.user;
   };
 
   const logout = () => {
-    logoutUser();
+    authAPI.logout();
     setUser(null);
+  };
+
+  const updateUser = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
   };
 
   const value = {
@@ -71,6 +57,7 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    updateUser,
     loading
   };
 

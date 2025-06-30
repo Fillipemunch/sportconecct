@@ -7,7 +7,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { mockEvents, mockSports } from '../data/mock';
+import { eventsAPI, sportsAPI, userAPI } from '../services/api';
 import { 
   Calendar, 
   MapPin, 
@@ -19,21 +19,48 @@ import {
   Star,
   Trophy,
   Activity,
-  Target
+  Target,
+  Loader2
 } from 'lucide-react';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const { language, t } = useLanguage();
   const navigate = useNavigate();
-  const [events, setEvents] = useState(mockEvents);
+  const [events, setEvents] = useState([]);
+  const [sports, setSports] = useState([]);
+  const [userStats, setUserStats] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [sportFilter, setSportFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [eventsData, sportsData, statsData] = await Promise.all([
+        eventsAPI.getAll(),
+        sportsAPI.getAll(),
+        userAPI.getStats()
+      ]);
+      
+      setEvents(eventsData);
+      setSports(sportsData);
+      setUserStats(statsData);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.titleDa.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         event.title_da.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          event.location.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSport = sportFilter === 'all' || event.sport === sportFilter;
     const matchesDate = dateFilter === 'all' || 
@@ -46,20 +73,17 @@ const Dashboard = () => {
 
   const userEvents = events.filter(event => event.participants.includes(user?.id));
 
-  const handleJoinEvent = (eventId) => {
-    setEvents(prev => prev.map(event => 
-      event.id === eventId && !event.participants.includes(user?.id)
-        ? { 
-            ...event, 
-            participants: [...event.participants, user.id],
-            currentParticipants: event.currentParticipants + 1
-          }
-        : event
-    ));
+  const handleJoinEvent = async (eventId) => {
+    try {
+      await eventsAPI.join(eventId);
+      await loadData(); // Reload data to get updated participants
+    } catch (error) {
+      console.error('Error joining event:', error);
+    }
   };
 
   const getSportInfo = (sportId) => {
-    return mockSports.find(sport => sport.id === sportId) || { name: sportId, nameDa: sportId, icon: '🏃', color: '#6B7280' };
+    return sports.find(sport => sport.id === sportId) || { name: sportId, name_da: sportId, icon: '🏃', color: '#6B7280' };
   };
 
   const formatDate = (dateString) => {
@@ -80,6 +104,17 @@ const Dashboard = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-orange-500" />
+          <p className="text-gray-600">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -94,36 +129,38 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-br from-orange-400 to-red-500 text-white border-0 hover:scale-105 transition-transform duration-200">
-            <CardContent className="p-4 text-center">
-              <Trophy className="mx-auto mb-2" size={24} />
-              <p className="text-2xl font-bold">{user?.eventsParticipated || 0}</p>
-              <p className="text-sm opacity-90">{t('profile.eventsParticipated')}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-green-400 to-emerald-500 text-white border-0 hover:scale-105 transition-transform duration-200">
-            <CardContent className="p-4 text-center">
-              <Plus className="mx-auto mb-2" size={24} />
-              <p className="text-2xl font-bold">{user?.eventsCreated || 0}</p>
-              <p className="text-sm opacity-90">{t('profile.eventsCreated')}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-blue-400 to-indigo-500 text-white border-0 hover:scale-105 transition-transform duration-200">
-            <CardContent className="p-4 text-center">
-              <Star className="mx-auto mb-2" size={24} />
-              <p className="text-2xl font-bold">{user?.badges?.length || 0}</p>
-              <p className="text-sm opacity-90">Badges</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-gradient-to-br from-purple-400 to-pink-500 text-white border-0 hover:scale-105 transition-transform duration-200">
-            <CardContent className="p-4 text-center">
-              <Activity className="mx-auto mb-2" size={24} />
-              <p className="text-2xl font-bold">{user?.sports?.length || 0}</p>
-              <p className="text-sm opacity-90">Sports</p>
-            </CardContent>
-          </Card>
-        </div>
+        {userStats && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-orange-400 to-red-500 text-white border-0 hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 text-center">
+                <Trophy className="mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold">{userStats.events_participated}</p>
+                <p className="text-sm opacity-90">{t('profile.eventsParticipated')}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-green-400 to-emerald-500 text-white border-0 hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 text-center">
+                <Plus className="mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold">{userStats.events_created}</p>
+                <p className="text-sm opacity-90">{t('profile.eventsCreated')}</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-blue-400 to-indigo-500 text-white border-0 hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 text-center">
+                <Star className="mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold">{userStats.badges_count}</p>
+                <p className="text-sm opacity-90">Badges</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-purple-400 to-pink-500 text-white border-0 hover:scale-105 transition-transform duration-200">
+              <CardContent className="p-4 text-center">
+                <Activity className="mx-auto mb-2" size={24} />
+                <p className="text-2xl font-bold">{userStats.sports_count}</p>
+                <p className="text-sm opacity-90">Sports</p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Search and Filters */}
         <Card className="bg-white/80 backdrop-blur-lg border-white/20">
@@ -149,10 +186,10 @@ const Dashboard = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t('common.all')}</SelectItem>
-                  {mockSports.map(sport => (
+                  {sports.map(sport => (
                     <SelectItem key={sport.id} value={sport.id}>
                       <span className="mr-2">{sport.icon}</span>
-                      {language === 'da' ? sport.nameDa : sport.name}
+                      {language === 'da' ? sport.name_da : sport.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -177,7 +214,7 @@ const Dashboard = () => {
           {filteredEvents.map(event => {
             const sport = getSportInfo(event.sport);
             const isParticipating = event.participants.includes(user?.id);
-            const isFull = event.currentParticipants >= event.maxParticipants;
+            const isFull = event.current_participants >= event.max_participants;
             
             return (
               <Card 
@@ -199,14 +236,14 @@ const Dashboard = () => {
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between">
                     <h3 className="font-bold text-lg group-hover:text-orange-600 transition-colors">
-                      {language === 'da' ? event.titleDa : event.title}
+                      {language === 'da' ? event.title_da : event.title}
                     </h3>
                     <Badge 
                       variant="outline" 
                       className="ml-2"
                       style={{ color: sport.color, borderColor: sport.color }}
                     >
-                      {language === 'da' ? sport.nameDa : sport.name}
+                      {language === 'da' ? sport.name_da : sport.name}
                     </Badge>
                   </div>
 
@@ -226,7 +263,7 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <Users size={16} />
-                        <span>{event.currentParticipants}/{event.maxParticipants} {t('event.participants')}</span>
+                        <span>{event.current_participants}/{event.max_participants} {t('event.participants')}</span>
                       </div>
                       <div className="text-right">
                         {event.price === 0 ? (
@@ -316,7 +353,7 @@ const Dashboard = () => {
                       </div>
                       <div className="flex-1">
                         <h4 className="font-medium">
-                          {language === 'da' ? event.titleDa : event.title}
+                          {language === 'da' ? event.title_da : event.title}
                         </h4>
                         <p className="text-sm text-gray-600">
                           {formatDate(event.date)} at {event.time} • {event.location}
