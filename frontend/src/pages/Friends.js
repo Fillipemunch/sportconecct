@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
 import { useToast } from '../hooks/use-toast';
 import { friendsAPI, sportsAPI } from '../services/api';
+import ChatModal from '../components/ChatModal';
 import { 
   Users, 
   Search, 
