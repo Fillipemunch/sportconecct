@@ -129,6 +129,18 @@ async def update_document(collection_name: str, query: dict, update: dict):
 async def delete_document(collection_name: str, query: dict):
     """Delete a document from a collection"""
     collection = await get_collection(collection_name)
+    
+    # If querying by id, convert to MongoDB ObjectId if needed
+    if 'id' in query:
+        try:
+            from bson import ObjectId
+            # Try to convert to ObjectId first
+            query['_id'] = ObjectId(query['id'])
+            del query['id']
+        except:
+            # If conversion fails, also try the original id field
+            pass
+    
     result = await collection.delete_one(query)
     return result.deleted_count > 0
 
