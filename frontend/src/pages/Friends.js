@@ -118,7 +118,11 @@ const Friends = () => {
     try {
       setActionLoading(friendId);
       await friendsAPI.remove(friendId);
-      await loadData(); // Reload data
+      
+      // Remove from friends list
+      setFriends(prev => prev.filter(f => f.id !== friendId));
+      await loadSuggestions(); // Reload suggestions
+      
       toast({
         title: t('common.success'),
         description: 'Friend removed successfully!'
