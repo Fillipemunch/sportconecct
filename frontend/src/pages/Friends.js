@@ -37,18 +37,28 @@ const Friends = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    // Reload suggestions when search term changes
+    if (activeTab === 'suggestions') {
+      loadSuggestions();
+    }
+  }, [searchTerm, activeTab]);
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [friendsData, suggestionsData, sportsData] = await Promise.all([
+      const [friendsData, sportsData] = await Promise.all([
         friendsAPI.getAll(),
-        friendsAPI.getSuggestions(10),
         sportsAPI.getAll()
       ]);
       
       setFriends(friendsData);
-      setSuggestions(suggestionsData);
       setSports(sportsData);
+      
+      // Load initial suggestions
+      if (activeTab === 'suggestions') {
+        await loadSuggestions();
+      }
     } catch (error) {
       console.error('Error loading friends data:', error);
       toast({
@@ -58,6 +68,15 @@ const Friends = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSuggestions = async () => {
+    try {
+      const suggestionsData = await friendsAPI.getSuggestions(10, searchTerm);
+      setSuggestions(suggestionsData);
+    } catch (error) {
+      console.error('Error loading suggestions:', error);
     }
   };
 
