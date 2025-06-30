@@ -427,6 +427,14 @@ const Friends = () => {
           </>
         )}
       </div>
+
+        {/* Chat Modal */}
+        <ChatModal
+          isOpen={chatModal.isOpen}
+          onClose={() => setChatModal({ isOpen: false, friend: null })}
+          friend={chatModal.friend}
+        />
+      </div>
     </div>
   );
 };
