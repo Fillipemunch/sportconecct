@@ -51,12 +51,26 @@ const EventDetails = () => {
       setEvent(eventData);
     } catch (error) {
       console.error('Error loading event:', error);
-      toast({
-        title: t('common.error'),
-        description: 'Failed to load event details',
-        variant: 'destructive'
-      });
-      navigate('/events');
+      
+      // Check if it's a 404 error
+      if (error.response?.status === 404) {
+        toast({
+          title: t('common.error'),
+          description: 'Event not found',
+          variant: 'destructive'
+        });
+      } else {
+        toast({
+          title: t('common.error'),
+          description: 'Failed to load event details',
+          variant: 'destructive'
+        });
+      }
+      
+      // Navigate back after a short delay
+      setTimeout(() => {
+        navigate('/events');
+      }, 2000);
     } finally {
       setLoading(false);
     }
