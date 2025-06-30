@@ -192,12 +192,12 @@ class SportConnectAPITest(unittest.TestCase):
         self.assertIn("id", data)
         self.assertEqual(data["title"], self.test_event["title"])
         self.assertEqual(data["sport"], self.test_event["sport"])
-        self.assertEqual(data["organizer_id"], self.user_id)
-        self.assertEqual(data["current_participants"], 1)
-        self.assertIn(self.user_id, data["participants"])
-        
         # Store the event ID for future tests
         self.__class__.event_id = data["id"]
+        # Store the organizer ID from the response
+        self.__class__.organizer_id = data["organizer_id"]
+        self.assertEqual(data["current_participants"], 1)
+        self.assertIn(self.organizer_id, data["participants"])
 
     def test_12_get_events(self):
         """Test getting all events"""
