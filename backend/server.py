@@ -712,7 +712,7 @@ async def get_friend_suggestions(
     search: Optional[str] = Query(None),
     limit: int = Query(10, le=20)
 ):
-    """Get friend suggestions"""
+    """Get friend suggestions - excluding test users"""
     try:
         # Get existing friend IDs
         friendships = await get_documents("friendships", {
@@ -729,11 +729,16 @@ async def get_friend_suggestions(
             else:
                 existing_friend_ids.add(friendship["user_id"])
         
-        # Exclude current user and existing friends
+        # Exclude current user, existing friends, and test users
         exclude_ids = list(existing_friend_ids) + [current_user.id]
         
-        # Build query
-        base_query = {"id": {"$nin": exclude_ids}}
+        # Build query to exclude test users
+        base_query = {
+            "id": {"$nin": exclude_ids},
+            # Exclude test users
+            "name": {"$not": {"$regex": "test|temp|cyej2r1l", "$options": "i"}},
+            "email": {"$not": {"$regex": "test|temp|cyej2r1l", "$options": "i"}}
+        }
         
         # Add search filter if provided
         if search and search.strip():
@@ -755,7 +760,9 @@ async def get_friend_suggestions(
         # If not enough suggestions and no search term, add random users
         if len(suggestions) < limit and not search:
             additional_query = {
-                "id": {"$nin": exclude_ids + [s["id"] for s in suggestions]}
+                "id": {"$nin": exclude_ids + [s["id"] for s in suggestions]},
+                "name": {"$not": {"$regex": "test|temp|cyej2r1l", "$options": "i"}},
+                "email": {"$not": {"$regex": "test|temp|cyej2r1l", "$options": "i"}}
             }
             additional = await get_documents(
                 "users",
