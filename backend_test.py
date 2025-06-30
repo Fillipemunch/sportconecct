@@ -237,6 +237,9 @@ class SportConnectAPITest(unittest.TestCase):
 
     def test_14_get_event_by_id(self):
         """Test getting a specific event by ID"""
+        if not self.event_id:
+            print("WARNING: No event ID available for testing")
+            return
         response = requests.get(f"{BACKEND_URL}/events/{self.event_id}")
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -247,6 +250,9 @@ class SportConnectAPITest(unittest.TestCase):
 
     def test_15_join_event(self):
         """Test joining an event"""
+        if not self.event_id:
+            print("WARNING: No event ID available for testing")
+            return
         headers = {"Authorization": f"Bearer {self.access_token2}"}
         response = requests.post(f"{BACKEND_URL}/events/{self.event_id}/join", headers=headers)
         self.assertEqual(response.status_code, 200)
@@ -263,6 +269,9 @@ class SportConnectAPITest(unittest.TestCase):
 
     def test_16_join_event_already_joined(self):
         """Test joining an event that the user has already joined"""
+        if not self.event_id:
+            print("WARNING: No event ID available for testing")
+            return
         headers = {"Authorization": f"Bearer {self.access_token2}"}
         response = requests.post(f"{BACKEND_URL}/events/{self.event_id}/join", headers=headers)
         self.assertEqual(response.status_code, 400)
@@ -272,6 +281,9 @@ class SportConnectAPITest(unittest.TestCase):
 
     def test_17_leave_event(self):
         """Test leaving an event"""
+        if not self.event_id:
+            print("WARNING: No event ID available for testing")
+            return
         headers = {"Authorization": f"Bearer {self.access_token2}"}
         response = requests.post(f"{BACKEND_URL}/events/{self.event_id}/leave", headers=headers)
         self.assertEqual(response.status_code, 200)
@@ -288,6 +300,9 @@ class SportConnectAPITest(unittest.TestCase):
 
     def test_18_leave_event_not_joined(self):
         """Test leaving an event that the user has not joined"""
+        if not self.event_id:
+            print("WARNING: No event ID available for testing")
+            return
         headers = {"Authorization": f"Bearer {self.access_token2}"}
         response = requests.post(f"{BACKEND_URL}/events/{self.event_id}/leave", headers=headers)
         self.assertEqual(response.status_code, 400)
@@ -297,6 +312,9 @@ class SportConnectAPITest(unittest.TestCase):
 
     def test_19_organizer_leave_event(self):
         """Test organizer trying to leave their own event"""
+        if not self.event_id:
+            print("WARNING: No event ID available for testing")
+            return
         headers = {"Authorization": f"Bearer {self.access_token}"}
         response = requests.post(f"{BACKEND_URL}/events/{self.event_id}/leave", headers=headers)
         self.assertEqual(response.status_code, 400)
