@@ -759,3 +759,5 @@ test_plan:
 agent_communication:
   - agent: "testing"
     message: "Completed comprehensive testing of the SportConnect backend API. All endpoints are working correctly except for the user profile update endpoint, which returns a 404 Not Found error. This suggests the endpoint might not be properly implemented or registered. All other functionality is working as expected."
+  - agent: "testing"
+    message: "Starting comprehensive testing of the SportConnect frontend application. Will test all core features including authentication, dashboard, events management, profile management, friends system, and general UX."
