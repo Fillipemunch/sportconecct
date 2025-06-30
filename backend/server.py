@@ -702,6 +702,7 @@ async def get_friends(current_user: User = Depends(get_current_user)):
 @api_router.get("/friends/suggestions", response_model=List[FriendInfo])
 async def get_friend_suggestions(
     current_user: User = Depends(get_current_user),
+    search: Optional[str] = Query(None),
     limit: int = Query(10, le=20)
 ):
     """Get friend suggestions"""
@@ -724,21 +725,34 @@ async def get_friend_suggestions(
         # Exclude current user and existing friends
         exclude_ids = list(existing_friend_ids) + [current_user.id]
         
-        # Find users with similar sports interests
+        # Build query
+        base_query = {"id": {"$nin": exclude_ids}}
+        
+        # Add search filter if provided
+        if search and search.strip():
+            base_query["$or"] = [
+                {"name": {"$regex": search.strip(), "$options": "i"}},
+                {"location": {"$regex": search.strip(), "$options": "i"}}
+            ]
+        
+        # Find users with similar sports interests first
         suggestions = await get_documents(
             "users",
             {
-                "id": {"$nin": exclude_ids},
+                **base_query,
                 "sports": {"$in": current_user.sports} if current_user.sports else {}
             },
             limit=limit
         )
         
-        # If not enough suggestions, add random users
-        if len(suggestions) < limit:
+        # If not enough suggestions and no search term, add random users
+        if len(suggestions) < limit and not search:
+            additional_query = {
+                "id": {"$nin": exclude_ids + [s["id"] for s in suggestions]}
+            }
             additional = await get_documents(
                 "users",
-                {"id": {"$nin": exclude_ids + [s["id"] for s in suggestions]}},
+                additional_query,
                 limit=limit - len(suggestions)
             )
             suggestions.extend(additional)
