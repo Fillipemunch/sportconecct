@@ -79,6 +79,16 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Validate required fields
+      if (!registerForm.name || !registerForm.email || !registerForm.password || 
+          !registerForm.age || !registerForm.location || !registerForm.skill_level) {
+        throw new Error('Please fill in all required fields');
+      }
+
+      if (registerForm.sports.length === 0) {
+        throw new Error('Please select at least one sport');
+      }
+
       await register(registerForm);
       toast({
         title: t('common.success'),
@@ -86,9 +96,10 @@ const Auth = () => {
       });
       navigate('/dashboard');
     } catch (error) {
+      console.error('Registration error:', error);
       toast({
         title: t('common.error'),
-        description: error.response?.data?.detail || t('common.error'),
+        description: error.response?.data?.detail || error.message || t('common.error'),
         variant: 'destructive'
       });
     } finally {
