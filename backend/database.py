@@ -92,6 +92,54 @@ async def get_document(collection_name: str, query: dict):
 async def get_documents(collection_name: str, query: dict = None, limit: int = None, skip: int = None, sort: list = None):
     """Get multiple documents from a collection"""
     collection = await get_collection(collection_name)
+    
+    # Handle special query cases
+    if query and 'id' in query:
+        if isinstance(query['id'], dict) and '$in' in query['id']:
+            # Handle $in queries with id conversion
+            try:
+                from bson import ObjectId
+                object_ids = []
+                string_ids = []
+                for id_val in query['id']['$in']:
+                    try:
+                        object_ids.append(ObjectId(id_val))
+                        string_ids.append(id_val)
+                    except:
+                        string_ids.append(id_val)
+                
+                # Query both _id and id fields
+                query = {
+                    "$or": [
+                        {"_id": {"$in": object_ids}},
+                        {"id": {"$in": string_ids}}
+                    ]
+                }
+            except:
+                pass
+        elif isinstance(query['id'], dict) and '$nin' in query['id']:
+            # Handle $nin queries with id conversion
+            try:
+                from bson import ObjectId
+                object_ids = []
+                string_ids = []
+                for id_val in query['id']['$nin']:
+                    try:
+                        object_ids.append(ObjectId(id_val))
+                        string_ids.append(id_val)
+                    except:
+                        string_ids.append(id_val)
+                
+                # Query both _id and id fields
+                query = {
+                    "$and": [
+                        {"_id": {"$nin": object_ids}},
+                        {"id": {"$nin": string_ids}}
+                    ]
+                }
+            except:
+                pass
+    
     cursor = collection.find(query or {})
     
     if sort:
