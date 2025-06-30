@@ -75,7 +75,7 @@ const Friends = () => {
 
   const loadSuggestions = async () => {
     try {
-      const suggestionsData = await friendsAPI.getSuggestions(10, searchTerm);
+      const suggestionsData = await friendsAPI.getSuggestions(10, searchTerm.trim());
       setSuggestions(suggestionsData);
     } catch (error) {
       console.error('Error loading suggestions:', error);
