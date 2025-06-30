@@ -93,7 +93,11 @@ const Friends = () => {
     try {
       setActionLoading(userId);
       await friendsAPI.add(userId);
-      await loadData(); // Reload data
+      
+      // Remove from suggestions and add to friends list
+      setSuggestions(prev => prev.filter(s => s.id !== userId));
+      await loadData(); // Reload all data
+      
       toast({
         title: t('common.success'),
         description: 'Friend added successfully!'
