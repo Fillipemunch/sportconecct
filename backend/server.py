@@ -898,49 +898,75 @@ async def cleanup_test_data(current_user: User = Depends(get_current_user)):
                 detail="Admin access required"
             )
         
-        # Delete test users (users with test names or temp emails)
-        test_patterns = [
-            {"name": {"$regex": "test", "$options": "i"}},
-            {"name": {"$regex": "temp", "$options": "i"}},
-            {"email": {"$regex": "test", "$options": "i"}},
-            {"email": {"$regex": "temp", "$options": "i"}},
-            {"name": {"$regex": "cyej2r1l", "$options": "i"}},
-            {"bio": {"$regex": "temp", "$options": "i"}}
-        ]
+        from bson import ObjectId
         
-        # Get test users first
-        test_users = []
-        for pattern in test_patterns:
-            users = await get_documents("users", pattern)
-            test_users.extend([u["id"] for u in users])
-        
-        test_user_ids = list(set(test_users))
-        
-        # Delete test events (events created by test users or with test names)
-        await delete_documents("events", {
+        # Get and delete test users
+        test_users = await get_documents("users", {
             "$or": [
-                {"organizer_id": {"$in": test_user_ids}},
-                {"title": {"$regex": "test", "$options": "i"}},
-                {"title_da": {"$regex": "test", "$options": "i"}}
+                {"name": {"$regex": "test", "$options": "i"}},
+                {"name": {"$regex": "temp", "$options": "i"}},
+                {"email": {"$regex": "test", "$options": "i"}},
+                {"name": {"$regex": "cyej2r1l", "$options": "i"}}
             ]
         })
+        
+        test_user_ids = [user["id"] for user in test_users]
+        
+        # Delete test events
+        test_events_deleted = 0
+        if test_user_ids:
+            collection = await get_collection("events")
+            result = await collection.delete_many({
+                "$or": [
+                    {"organizer_id": {"$in": test_user_ids}},
+                    {"title": {"$regex": "test", "$options": "i"}},
+                    {"title_da": {"$regex": "test", "$options": "i"}}
+                ]
+            })
+            test_events_deleted = result.deleted_count
         
         # Delete test messages
-        await delete_documents("messages", {"user_id": {"$in": test_user_ids}})
+        test_messages_deleted = 0
+        if test_user_ids:
+            collection = await get_collection("messages")
+            result = await collection.delete_many({"user_id": {"$in": test_user_ids}})
+            test_messages_deleted = result.deleted_count
         
         # Delete test friendships
-        await delete_documents("friendships", {
-            "$or": [
-                {"user_id": {"$in": test_user_ids}},
-                {"friend_id": {"$in": test_user_ids}}
-            ]
-        })
+        test_friendships_deleted = 0
+        if test_user_ids:
+            collection = await get_collection("friendships")
+            result = await collection.delete_many({
+                "$or": [
+                    {"user_id": {"$in": test_user_ids}},
+                    {"friend_id": {"$in": test_user_ids}}
+                ]
+            })
+            test_friendships_deleted = result.deleted_count
         
         # Delete test users
-        for pattern in test_patterns:
-            await delete_documents("users", pattern)
+        test_users_deleted = 0
+        if test_user_ids:
+            collection = await get_collection("users")
+            result = await collection.delete_many({
+                "$or": [
+                    {"name": {"$regex": "test", "$options": "i"}},
+                    {"name": {"$regex": "temp", "$options": "i"}},
+                    {"email": {"$regex": "test", "$options": "i"}},
+                    {"name": {"$regex": "cyej2r1l", "$options": "i"}}
+                ]
+            })
+            test_users_deleted = result.deleted_count
         
-        return {"message": "Test data cleaned successfully"}
+        return {
+            "message": "Test data cleaned successfully",
+            "deleted": {
+                "users": test_users_deleted,
+                "events": test_events_deleted,
+                "messages": test_messages_deleted,
+                "friendships": test_friendships_deleted
+            }
+        }
         
     except HTTPException:
         raise
@@ -948,7 +974,7 @@ async def cleanup_test_data(current_user: User = Depends(get_current_user)):
         logger.error(f"Cleanup error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to cleanup test data"
+            detail=f"Failed to cleanup test data: {str(e)}"
         )
 
 async def delete_documents(collection_name: str, query: dict):
