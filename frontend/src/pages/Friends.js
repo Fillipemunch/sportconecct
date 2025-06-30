@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
-import { mockFriends, mockUsers, mockSports } from '../data/mock';
+import { useToast } from '../hooks/use-toast';
+import { friendsAPI, sportsAPI } from '../services/api';
 import { 
   Users, 
   Search, 
@@ -17,53 +18,113 @@ import {
   Star,
   Filter,
   UserCheck,
-  UserX
+  UserX,
+  Loader2
 } from 'lucide-react';
 
 const Friends = () => {
   const { language, t } = useLanguage();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('friends');
-  const [friends, setFriends] = useState(mockFriends);
+  const [friends, setFriends] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [sports, setSports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(null);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [friendsData, suggestionsData, sportsData] = await Promise.all([
+        friendsAPI.getAll(),
+        friendsAPI.getSuggestions(10),
+        sportsAPI.getAll()
+      ]);
+      
+      setFriends(friendsData);
+      setSuggestions(suggestionsData);
+      setSports(sportsData);
+    } catch (error) {
+      console.error('Error loading friends data:', error);
+      toast({
+        title: t('common.error'),
+        description: 'Failed to load friends data',
+        variant: 'destructive'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredFriends = friends.filter(friend =>
     friend.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const suggestedFriends = mockUsers.filter(user => 
-    !friends.some(friend => friend.id === user.id) && 
-    user.id !== '1' && // Not current user
+  const filteredSuggestions = suggestions.filter(user => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddFriend = (userId) => {
-    const user = mockUsers.find(u => u.id === userId);
-    if (user) {
-      setFriends(prev => [...prev, {
-        id: user.id,
-        name: user.name,
-        status: 'offline',
-        mutualEvents: 0
-      }]);
+  const handleAddFriend = async (userId) => {
+    try {
+      setActionLoading(userId);
+      await friendsAPI.add(userId);
+      await loadData(); // Reload data
+      toast({
+        title: t('common.success'),
+        description: 'Friend added successfully!'
+      });
+    } catch (error) {
+      console.error('Error adding friend:', error);
+      toast({
+        title: t('common.error'),
+        description: error.response?.data?.detail || 'Failed to add friend',
+        variant: 'destructive'
+      });
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleRemoveFriend = (friendId) => {
-    setFriends(prev => prev.filter(friend => friend.id !== friendId));
+  const handleRemoveFriend = async (friendId) => {
+    try {
+      setActionLoading(friendId);
+      await friendsAPI.remove(friendId);
+      await loadData(); // Reload data
+      toast({
+        title: t('common.success'),
+        description: 'Friend removed successfully!'
+      });
+    } catch (error) {
+      console.error('Error removing friend:', error);
+      toast({
+        title: t('common.error'),
+        description: error.response?.data?.detail || 'Failed to remove friend',
+        variant: 'destructive'
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const getSportInfo = (sportId) => {
+    return sports.find(sport => sport.id === sportId) || { name: sportId, name_da: sportId, icon: '🏃', color: '#6B7280' };
   };
 
   const FriendCard = ({ friend, isSuggestion = false }) => {
-    const user = mockUsers.find(u => u.id === friend.id) || friend;
-    
     return (
       <Card className="bg-white/90 backdrop-blur hover:shadow-lg transition-all duration-200 border-0">
         <CardContent className="p-4">
           <div className="flex items-center space-x-4">
             <div className="relative">
               <Avatar className="h-12 w-12 border-2 border-gray-200">
-                <AvatarImage src={user.photo} alt={user.name} />
+                <AvatarImage src={friend.photo} alt={friend.name} />
                 <AvatarFallback className="bg-gradient-to-br from-orange-400 to-red-400 text-white">
-                  {user.name.split(' ').map(n => n[0]).join('')}
+                  {friend.name.split(' ').map(n => n[0]).join('')}
                 </AvatarFallback>
               </Avatar>
               {!isSuggestion && (
@@ -74,41 +135,41 @@ const Friends = () => {
             </div>
             
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-gray-900 truncate">{user.name}</h3>
+              <h3 className="font-medium text-gray-900 truncate">{friend.name}</h3>
               <div className="flex items-center space-x-2 text-sm text-gray-500">
-                {user.location && (
+                {friend.location && (
                   <div className="flex items-center space-x-1">
                     <MapPin size={12} />
-                    <span>{user.location}</span>
+                    <span>{friend.location}</span>
                   </div>
                 )}
-                {user.age && (
-                  <span>• {user.age} years</span>
+                {friend.age && (
+                  <span>• {friend.age} years</span>
                 )}
               </div>
               
-              {user.sports && (
+              {friend.sports && friend.sports.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {user.sports.slice(0, 3).map(sportId => {
-                    const sport = mockSports.find(s => s.id === sportId);
+                  {friend.sports.slice(0, 3).map(sportId => {
+                    const sport = getSportInfo(sportId);
                     return sport ? (
                       <Badge key={sportId} variant="outline" className="text-xs" style={{ borderColor: sport.color, color: sport.color }}>
                         {sport.icon}
                       </Badge>
                     ) : null;
                   })}
-                  {user.sports.length > 3 && (
+                  {friend.sports.length > 3 && (
                     <Badge variant="outline" className="text-xs">
-                      +{user.sports.length - 3}
+                      +{friend.sports.length - 3}
                     </Badge>
                   )}
                 </div>
               )}
               
-              {!isSuggestion && friend.mutualEvents > 0 && (
+              {!isSuggestion && friend.mutual_events > 0 && (
                 <div className="flex items-center space-x-1 mt-1 text-xs text-gray-500">
                   <Calendar size={12} />
-                  <span>{friend.mutualEvents} mutual events</span>
+                  <span>{friend.mutual_events} mutual events</span>
                 </div>
               )}
             </div>
@@ -117,23 +178,33 @@ const Friends = () => {
               {isSuggestion ? (
                 <Button
                   size="sm"
-                  onClick={() => handleAddFriend(user.id)}
+                  onClick={() => handleAddFriend(friend.id)}
+                  disabled={actionLoading === friend.id}
                   className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
                 >
-                  <UserPlus size={14} />
+                  {actionLoading === friend.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <UserPlus size={14} />
+                  )}
                 </Button>
               ) : (
                 <>
-                  <Button size="sm" variant="outline">
+                  <Button size="sm" variant="outline" disabled>
                     <MessageCircle size={14} />
                   </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={() => handleRemoveFriend(friend.id)}
+                    disabled={actionLoading === friend.id}
                     className="text-red-600 hover:bg-red-50 hover:border-red-300"
                   >
-                    <UserX size={14} />
+                    {actionLoading === friend.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <UserX size={14} />
+                    )}
                   </Button>
                 </>
               )}
@@ -143,6 +214,17 @@ const Friends = () => {
       </Card>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-blue-500" />
+          <p className="text-gray-600">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-6">
@@ -194,7 +276,7 @@ const Friends = () => {
             }`}
           >
             <UserPlus className="mr-2" size={16} />
-            Suggestions ({suggestedFriends.length})
+            Suggestions ({suggestions.length})
           </Button>
         </div>
 
@@ -222,7 +304,7 @@ const Friends = () => {
               <Card className="bg-gradient-to-br from-orange-400 to-red-500 text-white border-0">
                 <CardContent className="p-4 text-center">
                   <Calendar className="mx-auto mb-2" size={24} />
-                  <p className="text-2xl font-bold">{friends.reduce((sum, f) => sum + f.mutualEvents, 0)}</p>
+                  <p className="text-2xl font-bold">{friends.reduce((sum, f) => sum + (f.mutual_events || 0), 0)}</p>
                   <p className="text-sm opacity-90">Mutual Events</p>
                 </CardContent>
               </Card>
@@ -230,7 +312,7 @@ const Friends = () => {
               <Card className="bg-gradient-to-br from-purple-400 to-pink-500 text-white border-0">
                 <CardContent className="p-4 text-center">
                   <Star className="mx-auto mb-2" size={24} />
-                  <p className="text-2xl font-bold">{Math.round(friends.reduce((sum, f) => sum + f.mutualEvents, 0) / Math.max(friends.length, 1))}</p>
+                  <p className="text-2xl font-bold">{Math.round(friends.reduce((sum, f) => sum + (f.mutual_events || 0), 0) / Math.max(friends.length, 1))}</p>
                   <p className="text-sm opacity-90">Avg Together</p>
                 </CardContent>
               </Card>
@@ -286,21 +368,24 @@ const Friends = () => {
               </CardContent>
             </Card>
 
-            {suggestedFriends.length === 0 ? (
+            {filteredSuggestions.length === 0 ? (
               <Card className="bg-white/80 backdrop-blur-lg border-white/20">
                 <CardContent className="text-center py-12">
                   <UserPlus size={48} className="mx-auto mb-4 text-gray-400" />
                   <h3 className="text-lg font-medium text-gray-600 mb-2">
-                    No suggestions available
+                    {searchTerm ? 'No suggestions found' : 'No suggestions available'}
                   </h3>
                   <p className="text-gray-500">
-                    We'll suggest people based on your sports interests and activity
+                    {searchTerm 
+                      ? 'Try adjusting your search terms'
+                      : 'We\'ll suggest people based on your sports interests and activity'
+                    }
                   </p>
                 </CardContent>
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {suggestedFriends.map(user => (
+                {filteredSuggestions.map(user => (
                   <FriendCard key={user.id} friend={user} isSuggestion={true} />
                 ))}
               </div>
