@@ -726,7 +726,31 @@ metadata:
 
 test_plan:
   current_focus:
-    - "User Management - Profile Updates"
+    - "Authentication - User Registration"
+    - "Authentication - User Login"
+    - "Authentication - Protected Routes"
+    - "Dashboard - Load User Statistics"
+    - "Dashboard - Search and Filter Events"
+    - "Dashboard - Join Events"
+    - "Dashboard - Upcoming Events Section"
+    - "Events - Create New Event"
+    - "Events - View Event Details"
+    - "Events - Join/Leave Events"
+    - "Events - Chat Functionality"
+    - "Events - Search and Filtering"
+    - "Profile - Edit Profile Information"
+    - "Profile - Update Sports Preferences"
+    - "Profile - View User Statistics"
+    - "Friends - View Friends List"
+    - "Friends - Search for Friend Suggestions"
+    - "Friends - Add Friends"
+    - "Friends - Remove Friends"
+    - "Friends - Chat with Friends"
+    - "General UX - Language Switching"
+    - "General UX - Responsive Design"
+    - "General UX - Loading States"
+    - "General UX - Navigation"
+    - "General UX - Toast Notifications"
   stuck_tasks:
     - "User Management - Profile Updates"
   test_all: false
