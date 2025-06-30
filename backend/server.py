@@ -898,8 +898,6 @@ async def cleanup_test_data(current_user: User = Depends(get_current_user)):
                 detail="Admin access required"
             )
         
-        from bson import ObjectId
-        
         # Get and delete test users
         test_users = await get_documents("users", {
             "$or": [
@@ -912,43 +910,35 @@ async def cleanup_test_data(current_user: User = Depends(get_current_user)):
         
         test_user_ids = [user["id"] for user in test_users]
         
-        # Delete test events
-        test_events_deleted = 0
+        deleted_counts = {
+            "users": len(test_user_ids),
+            "events": 0,
+            "messages": 0,
+            "friendships": 0
+        }
+        
+        # Delete test events, messages, friendships using existing delete functions
         if test_user_ids:
-            collection = await get_collection("events")
-            result = await collection.delete_many({
+            # Delete related data
+            await delete_documents("events", {
                 "$or": [
                     {"organizer_id": {"$in": test_user_ids}},
                     {"title": {"$regex": "test", "$options": "i"}},
                     {"title_da": {"$regex": "test", "$options": "i"}}
                 ]
             })
-            test_events_deleted = result.deleted_count
-        
-        # Delete test messages
-        test_messages_deleted = 0
-        if test_user_ids:
-            collection = await get_collection("messages")
-            result = await collection.delete_many({"user_id": {"$in": test_user_ids}})
-            test_messages_deleted = result.deleted_count
-        
-        # Delete test friendships
-        test_friendships_deleted = 0
-        if test_user_ids:
-            collection = await get_collection("friendships")
-            result = await collection.delete_many({
+            
+            await delete_documents("messages", {"user_id": {"$in": test_user_ids}})
+            
+            await delete_documents("friendships", {
                 "$or": [
                     {"user_id": {"$in": test_user_ids}},
                     {"friend_id": {"$in": test_user_ids}}
                 ]
             })
-            test_friendships_deleted = result.deleted_count
-        
-        # Delete test users
-        test_users_deleted = 0
-        if test_user_ids:
-            collection = await get_collection("users")
-            result = await collection.delete_many({
+            
+            # Delete test users
+            await delete_documents("users", {
                 "$or": [
                     {"name": {"$regex": "test", "$options": "i"}},
                     {"name": {"$regex": "temp", "$options": "i"}},
@@ -956,16 +946,10 @@ async def cleanup_test_data(current_user: User = Depends(get_current_user)):
                     {"name": {"$regex": "cyej2r1l", "$options": "i"}}
                 ]
             })
-            test_users_deleted = result.deleted_count
         
         return {
             "message": "Test data cleaned successfully",
-            "deleted": {
-                "users": test_users_deleted,
-                "events": test_events_deleted,
-                "messages": test_messages_deleted,
-                "friendships": test_friendships_deleted
-            }
+            "deleted_test_users": deleted_counts["users"]
         }
         
     except HTTPException:
