@@ -331,7 +331,8 @@ const Auth = () => {
               <Button
                 type="submit"
                 className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold py-2.5 shadow-lg"
-                disabled={loading}
+                disabled={loading || !registerForm.name || !registerForm.email || !registerForm.password || 
+                           !registerForm.age || !registerForm.location || !registerForm.skill_level || registerForm.sports.length === 0}
               >
                 {loading ? (
                   <div className="flex items-center space-x-2">
