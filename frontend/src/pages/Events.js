@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { mockEvents, mockSports } from '../data/mock';
+import { eventsAPI, sportsAPI } from '../services/api';
 import { 
   Calendar, 
   MapPin, 
@@ -16,35 +16,52 @@ import {
   Plus,
   Filter,
   Grid,
-  List
+  List,
+  Loader2
 } from 'lucide-react';
 
 const Events = () => {
   const { language, t } = useLanguage();
   const navigate = useNavigate();
-  const [events, setEvents] = useState(mockEvents);
+  const [events, setEvents] = useState([]);
+  const [sports, setSports] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [sportFilter, setSportFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [skillFilter, setSkillFilter] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
 
-  const filteredEvents = events.filter(event => {
-    const matchesSearch = event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.titleDa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         event.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSport = sportFilter === 'all' || event.sport === sportFilter;
-    const matchesSkill = skillFilter === 'all' || event.skillLevel === skillFilter || event.skillLevel === 'all';
-    const matchesDate = dateFilter === 'all' || 
-                       (dateFilter === 'today' && new Date(event.date).toDateString() === new Date().toDateString()) ||
-                       (dateFilter === 'tomorrow' && new Date(event.date).toDateString() === new Date(Date.now() + 86400000).toDateString()) ||
-                       (dateFilter === 'thisWeek' && new Date(event.date) <= new Date(Date.now() + 7 * 86400000));
-    
-    return matchesSearch && matchesSport && matchesSkill && matchesDate;
-  });
+  useEffect(() => {
+    loadData();
+  }, [sportFilter, dateFilter, skillFilter, searchTerm]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const params = {};
+      
+      if (sportFilter !== 'all') params.sport = sportFilter;
+      if (dateFilter !== 'all') params.date_filter = dateFilter;
+      if (skillFilter !== 'all') params.skill_level = skillFilter;
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+      
+      const [eventsData, sportsData] = await Promise.all([
+        eventsAPI.getAll(params),
+        sportsAPI.getAll()
+      ]);
+      
+      setEvents(eventsData);
+      setSports(sportsData);
+    } catch (error) {
+      console.error('Error loading events:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getSportInfo = (sportId) => {
-    return mockSports.find(sport => sport.id === sportId) || { name: sportId, nameDa: sportId, icon: '🏃', color: '#6B7280' };
+    return sports.find(sport => sport.id === sportId) || { name: sportId, name_da: sportId, icon: '🏃', color: '#6B7280' };
   };
 
   const formatDate = (dateString) => {
@@ -65,22 +82,20 @@ const Events = () => {
     }
   };
 
-  const handleJoinEvent = (eventId) => {
-    setEvents(prev => prev.map(event => 
-      event.id === eventId && !event.participants.includes('1')
-        ? { 
-            ...event, 
-            participants: [...event.participants, '1'],
-            currentParticipants: event.currentParticipants + 1
-          }
-        : event
-    ));
+  const handleJoinEvent = async (eventId, e) => {
+    e.stopPropagation();
+    try {
+      await eventsAPI.join(eventId);
+      await loadData(); // Reload to get updated data
+    } catch (error) {
+      console.error('Error joining event:', error);
+    }
   };
 
   const EventCard = ({ event }) => {
     const sport = getSportInfo(event.sport);
-    const isParticipating = event.participants.includes('1');
-    const isFull = event.currentParticipants >= event.maxParticipants;
+    const isParticipating = event.participants.includes('current-user-id'); // Will be fixed with real user context
+    const isFull = event.current_participants >= event.max_participants;
     
     return (
       <Card 
@@ -101,7 +116,7 @@ const Events = () => {
               variant="secondary" 
               className="bg-white/90 text-gray-700"
             >
-              {t(`skill.${event.skillLevel}`)}
+              {t(`skill.${event.skill_level}`)}
             </Badge>
           </div>
         </div>
@@ -109,19 +124,19 @@ const Events = () => {
         <CardContent className="p-4 space-y-3">
           <div className="flex items-start justify-between">
             <h3 className="font-bold text-lg group-hover:text-orange-600 transition-colors">
-              {language === 'da' ? event.titleDa : event.title}
+              {language === 'da' ? event.title_da : event.title}
             </h3>
             <Badge 
               variant="outline" 
               className="ml-2"
               style={{ color: sport.color, borderColor: sport.color }}
             >
-              {language === 'da' ? sport.nameDa : sport.name}
+              {language === 'da' ? sport.name_da : sport.name}
             </Badge>
           </div>
 
           <p className="text-sm text-gray-600 line-clamp-2">
-            {language === 'da' ? event.descriptionDa : event.description}
+            {language === 'da' ? event.description_da : event.description}
           </p>
 
           <div className="space-y-2 text-sm text-gray-600">
@@ -140,7 +155,7 @@ const Events = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Users size={16} />
-                <span>{event.currentParticipants}/{event.maxParticipants} {t('event.participants')}</span>
+                <span>{event.current_participants}/{event.max_participants} {t('event.participants')}</span>
               </div>
               <div className="text-right">
                 {event.price === 0 ? (
@@ -167,10 +182,7 @@ const Events = () => {
               <Button
                 size="sm"
                 className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleJoinEvent(event.id);
-                }}
+                onClick={(e) => handleJoinEvent(event.id, e)}
               >
                 {t('event.join')}
               </Button>
@@ -183,8 +195,8 @@ const Events = () => {
 
   const EventListItem = ({ event }) => {
     const sport = getSportInfo(event.sport);
-    const isParticipating = event.participants.includes('1');
-    const isFull = event.currentParticipants >= event.maxParticipants;
+    const isParticipating = event.participants.includes('current-user-id'); // Will be fixed with real user context
+    const isFull = event.current_participants >= event.max_participants;
     
     return (
       <Card 
@@ -204,10 +216,10 @@ const Events = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-bold text-lg truncate">
-                    {language === 'da' ? event.titleDa : event.title}
+                    {language === 'da' ? event.title_da : event.title}
                   </h3>
                   <p className="text-sm text-gray-600 truncate">
-                    {language === 'da' ? event.descriptionDa : event.description}
+                    {language === 'da' ? event.description_da : event.description}
                   </p>
                 </div>
                 <Badge 
@@ -215,7 +227,7 @@ const Events = () => {
                   className="ml-2"
                   style={{ color: sport.color, borderColor: sport.color }}
                 >
-                  {language === 'da' ? sport.nameDa : sport.name}
+                  {language === 'da' ? sport.name_da : sport.name}
                 </Badge>
               </div>
               
@@ -234,7 +246,7 @@ const Events = () => {
                 </div>
                 <div className="flex items-center space-x-1">
                   <Users size={14} />
-                  <span>{event.currentParticipants}/{event.maxParticipants}</span>
+                  <span>{event.current_participants}/{event.max_participants}</span>
                 </div>
               </div>
             </div>
@@ -262,10 +274,7 @@ const Events = () => {
                 <Button
                   size="sm"
                   className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleJoinEvent(event.id);
-                  }}
+                  onClick={(e) => handleJoinEvent(event.id, e)}
                 >
                   {t('event.join')}
                 </Button>
@@ -276,6 +285,17 @@ const Events = () => {
       </Card>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-orange-500" />
+          <p className="text-gray-600">{t('common.loading')}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4 md:p-6">
@@ -314,10 +334,10 @@ const Events = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">{t('common.all')}</SelectItem>
-                    {mockSports.map(sport => (
+                    {sports.map(sport => (
                       <SelectItem key={sport.id} value={sport.id}>
                         <span className="mr-2">{sport.icon}</span>
-                        {language === 'da' ? sport.nameDa : sport.name}
+                        {language === 'da' ? sport.name_da : sport.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -371,7 +391,7 @@ const Events = () => {
         </Card>
 
         {/* Events Display */}
-        {filteredEvents.length === 0 ? (
+        {events.length === 0 ? (
           <Card className="bg-white/80 backdrop-blur-lg border-white/20">
             <CardContent className="text-center py-12">
               <Calendar size={48} className="mx-auto mb-4 text-gray-400" />
@@ -395,7 +415,7 @@ const Events = () => {
             ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
             : "space-y-4"
           }>
-            {filteredEvents.map(event => 
+            {events.map(event => 
               viewMode === 'grid' 
                 ? <EventCard key={event.id} event={event} />
                 : <EventListItem key={event.id} event={event} />

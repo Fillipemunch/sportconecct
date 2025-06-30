@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -10,7 +10,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
 import { useToast } from '../hooks/use-toast';
-import { mockSports } from '../data/mock';
+import { eventsAPI, sportsAPI } from '../services/api';
 import { 
   ArrowLeft, 
   Calendar, 
@@ -19,7 +19,8 @@ import {
   Clock,
   DollarSign,
   Target,
-  Plus
+  Plus,
+  Loader2
 } from 'lucide-react';
 
 const CreateEvent = () => {
@@ -28,21 +29,35 @@ const CreateEvent = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [sports, setSports] = useState([]);
 
   const [eventForm, setEventForm] = useState({
     title: '',
-    titleDa: '',
+    title_da: '',
     sport: '',
     date: '',
     time: '',
     location: '',
     address: '',
     description: '',
-    descriptionDa: '',
-    maxParticipants: '',
-    skillLevel: '',
+    description_da: '',
+    max_participants: '',
+    skill_level: '',
     price: '0'
   });
+
+  useEffect(() => {
+    loadSports();
+  }, []);
+
+  const loadSports = async () => {
+    try {
+      const sportsData = await sportsAPI.getAll();
+      setSports(sportsData);
+    } catch (error) {
+      console.error('Error loading sports:', error);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     setEventForm(prev => ({
@@ -56,35 +71,26 @@ const CreateEvent = () => {
     setLoading(true);
 
     try {
-      // Mock event creation - in real app this would call backend
-      const newEvent = {
-        id: Date.now().toString(),
+      // Convert form data to match backend expected format
+      const eventData = {
         ...eventForm,
-        organizerId: user.id,
-        organizer: user.name,
-        currentParticipants: 1,
-        participants: [user.id],
-        status: 'active',
-        tags: [
-          eventForm.price === '0' ? 'free' : 'paid',
-          eventForm.location.toLowerCase().includes('indoor') ? 'indoor' : 'outdoor',
-          mockSports.find(s => s.id === eventForm.sport)?.name.toLowerCase() || 'sport'
-        ],
-        maxParticipants: parseInt(eventForm.maxParticipants),
+        max_participants: parseInt(eventForm.max_participants),
         price: parseFloat(eventForm.price)
       };
 
+      const newEvent = await eventsAPI.create(eventData);
+      
       toast({
         title: t('common.success'),
         description: 'Event created successfully!'
       });
 
-      // In real app, we would update the events list in backend
       navigate(`/events/${newEvent.id}`);
     } catch (error) {
+      console.error('Error creating event:', error);
       toast({
         title: t('common.error'),
-        description: error.message || t('common.error'),
+        description: error.response?.data?.detail || 'Failed to create event',
         variant: 'destructive'
       });
     } finally {
@@ -93,7 +99,7 @@ const CreateEvent = () => {
   };
 
   const getSportInfo = (sportId) => {
-    return mockSports.find(sport => sport.id === sportId) || { name: sportId, nameDa: sportId, icon: '🏃', color: '#6B7280' };
+    return sports.find(sport => sport.id === sportId) || { name: sportId, name_da: sportId, icon: '🏃', color: '#6B7280' };
   };
 
   const selectedSport = eventForm.sport ? getSportInfo(eventForm.sport) : null;
@@ -151,11 +157,11 @@ const CreateEvent = () => {
                     <SelectValue placeholder="Select a sport" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockSports.map(sport => (
+                    {sports.map(sport => (
                       <SelectItem key={sport.id} value={sport.id}>
                         <div className="flex items-center space-x-2">
                           <span>{sport.icon}</span>
-                          <span>{language === 'da' ? sport.nameDa : sport.name}</span>
+                          <span>{language === 'da' ? sport.name_da : sport.name}</span>
                         </div>
                       </SelectItem>
                     ))}
@@ -177,11 +183,11 @@ const CreateEvent = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="titleDa">Event Title (Danish) *</Label>
+                  <Label htmlFor="title_da">Event Title (Danish) *</Label>
                   <Input
-                    id="titleDa"
-                    value={eventForm.titleDa}
-                    onChange={(e) => handleInputChange('titleDa', e.target.value)}
+                    id="title_da"
+                    value={eventForm.title_da}
+                    onChange={(e) => handleInputChange('title_da', e.target.value)}
                     placeholder="Morgen Fodboldkamp"
                     className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                     required
@@ -254,17 +260,17 @@ const CreateEvent = () => {
               {/* Participants and Skill Level */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="maxParticipants" className="flex items-center space-x-2">
+                  <Label htmlFor="max_participants" className="flex items-center space-x-2">
                     <Users size={16} />
                     <span>Max Participants *</span>
                   </Label>
                   <Input
-                    id="maxParticipants"
+                    id="max_participants"
                     type="number"
                     min="2"
                     max="100"
-                    value={eventForm.maxParticipants}
-                    onChange={(e) => handleInputChange('maxParticipants', e.target.value)}
+                    value={eventForm.max_participants}
+                    onChange={(e) => handleInputChange('max_participants', e.target.value)}
                     placeholder="20"
                     className="border-gray-300 focus:border-green-500 focus:ring-green-500"
                     required
@@ -275,7 +281,7 @@ const CreateEvent = () => {
                     <Target size={16} />
                     <span>Skill Level *</span>
                   </Label>
-                  <Select onValueChange={(value) => handleInputChange('skillLevel', value)} required>
+                  <Select onValueChange={(value) => handleInputChange('skill_level', value)} required>
                     <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
                       <SelectValue placeholder="Select skill level" />
                     </SelectTrigger>
@@ -322,11 +328,11 @@ const CreateEvent = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="descriptionDa">Description (Danish) *</Label>
+                  <Label htmlFor="description_da">Description (Danish) *</Label>
                   <Textarea
-                    id="descriptionDa"
-                    value={eventForm.descriptionDa}
-                    onChange={(e) => handleInputChange('descriptionDa', e.target.value)}
+                    id="description_da"
+                    value={eventForm.description_da}
+                    onChange={(e) => handleInputChange('description_da', e.target.value)}
                     placeholder="Venlig fodboldkamp for alle færdighedsniveauer. Tag dine støvler med!"
                     className="border-gray-300 focus:border-green-500 focus:ring-green-500 resize-none"
                     rows={4}
@@ -342,6 +348,7 @@ const CreateEvent = () => {
                   variant="outline"
                   onClick={() => navigate('/events')}
                   className="flex-1 sm:flex-none"
+                  disabled={loading}
                 >
                   {t('common.cancel')}
                 </Button>
@@ -352,7 +359,7 @@ const CreateEvent = () => {
                 >
                   {loading ? (
                     <div className="flex items-center space-x-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       <span>{t('common.loading')}</span>
                     </div>
                   ) : (
