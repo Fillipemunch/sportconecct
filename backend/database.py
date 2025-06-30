@@ -111,6 +111,18 @@ async def get_documents(collection_name: str, query: dict = None, limit: int = N
 async def update_document(collection_name: str, query: dict, update: dict):
     """Update a document in a collection"""
     collection = await get_collection(collection_name)
+    
+    # If querying by id, convert to MongoDB ObjectId if needed
+    if 'id' in query:
+        try:
+            from bson import ObjectId
+            # Try to convert to ObjectId first
+            query['_id'] = ObjectId(query['id'])
+            del query['id']
+        except:
+            # If conversion fails, also try the original id field
+            pass
+    
     result = await collection.update_one(query, {"$set": update})
     return result.modified_count > 0
 
