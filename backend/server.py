@@ -939,11 +939,10 @@ async def cleanup_test_data(current_user: User = Depends(get_current_user)):
             detail="Failed to cleanup test data"
         )
 
-async def delete_documents(collection_name: str, query: dict):
-    """Delete multiple documents from a collection"""
-    collection = await get_collection(collection_name)
-    result = await collection.delete_many(query)
-    return result.deleted_count
+# Basic hello world endpoint
+@api_router.get("/")
+async def root():
+    return {"message": "SportConnect API is running!"}
 
 # Include the router in the main app
 app.include_router(api_router)
