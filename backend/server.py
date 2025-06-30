@@ -124,14 +124,16 @@ async def login(user_credentials: UserLogin):
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password"
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
             )
         
         # Create access token
         access_token = create_access_token(data={"sub": user["id"]})
         
         # Remove password from response
-        del user["password"]
+        if "password" in user:
+            del user["password"]
         user_obj = User(**user)
         
         return Token(access_token=access_token, user=user_obj)
