@@ -220,7 +220,11 @@ const Friends = () => {
                 </Button>
               ) : (
                 <>
-                  <Button size="sm" variant="outline">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => setChatModal({ isOpen: true, friend: friend })}
+                  >
                     <MessageCircle size={14} />
                   </Button>
                   <Button 
