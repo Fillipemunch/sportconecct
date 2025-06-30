@@ -10,13 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { useToast } from '../hooks/use-toast';
-import { mockSports } from '../data/mock';
-import { Eye, EyeOff, Globe } from 'lucide-react';
+import { sportsAPI } from '../services/api';
+import { Eye, EyeOff, Globe, Loader2 } from 'lucide-react';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sports, setSports] = useState([]);
   const { login, register } = useAuth();
   const { language, changeLanguage, t } = useLanguage();
   const navigate = useNavigate();
@@ -34,9 +35,22 @@ const Auth = () => {
     age: '',
     location: '',
     sports: [],
-    skillLevel: '',
+    skill_level: '',
     bio: ''
   });
+
+  React.useEffect(() => {
+    loadSports();
+  }, []);
+
+  const loadSports = async () => {
+    try {
+      const sportsData = await sportsAPI.getAll();
+      setSports(sportsData);
+    } catch (error) {
+      console.error('Error loading sports:', error);
+    }
+  };
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -52,7 +66,7 @@ const Auth = () => {
     } catch (error) {
       toast({
         title: t('common.error'),
-        description: error.message || t('common.error'),
+        description: error.response?.data?.detail || t('common.error'),
         variant: 'destructive'
       });
     } finally {
@@ -74,7 +88,7 @@ const Auth = () => {
     } catch (error) {
       toast({
         title: t('common.error'),
-        description: error.message || t('common.error'),
+        description: error.response?.data?.detail || t('common.error'),
         variant: 'destructive'
       });
     } finally {
@@ -168,7 +182,7 @@ const Auth = () => {
               >
                 {loading ? (
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     <span>{t('common.loading')}</span>
                   </div>
                 ) : (
@@ -197,7 +211,7 @@ const Auth = () => {
                     min="13"
                     max="100"
                     value={registerForm.age}
-                    onChange={(e) => setRegisterForm(prev => ({ ...prev, age: e.target.value }))}
+                    onChange={(e) => setRegisterForm(prev => ({ ...prev, age: parseInt(e.target.value) || '' }))}
                     className="border-gray-300 focus:border-orange-500 focus:ring-orange-500"
                     required
                   />
@@ -226,6 +240,7 @@ const Auth = () => {
                     onChange={(e) => setRegisterForm(prev => ({ ...prev, password: e.target.value }))}
                     className="border-gray-300 focus:border-orange-500 focus:ring-orange-500 pr-10"
                     required
+                    minLength={6}
                   />
                   <Button
                     type="button"
@@ -254,7 +269,7 @@ const Auth = () => {
               <div className="space-y-2">
                 <Label>{t('auth.sports')}</Label>
                 <div className="flex flex-wrap gap-2">
-                  {mockSports.map(sport => (
+                  {sports.map(sport => (
                     <Badge
                       key={sport.id}
                       variant={registerForm.sports.includes(sport.id) ? "default" : "outline"}
@@ -266,15 +281,15 @@ const Auth = () => {
                       onClick={() => toggleSport(sport.id)}
                     >
                       <span className="mr-1">{sport.icon}</span>
-                      {language === 'da' ? sport.nameDa : sport.name}
+                      {language === 'da' ? sport.name_da : sport.name}
                     </Badge>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="skillLevel">{t('auth.skillLevel')}</Label>
-                <Select onValueChange={(value) => setRegisterForm(prev => ({ ...prev, skillLevel: value }))}>
+                <Label htmlFor="skill_level">{t('auth.skillLevel')}</Label>
+                <Select onValueChange={(value) => setRegisterForm(prev => ({ ...prev, skill_level: value }))}>
                   <SelectTrigger className="border-gray-300 focus:border-orange-500 focus:ring-orange-500">
                     <SelectValue placeholder={`Select ${t('auth.skillLevel').toLowerCase()}`} />
                   </SelectTrigger>
@@ -305,7 +320,7 @@ const Auth = () => {
               >
                 {loading ? (
                   <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     <span>{t('common.loading')}</span>
                   </div>
                 ) : (
