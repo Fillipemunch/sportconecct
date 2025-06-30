@@ -384,6 +384,13 @@ async def get_events(
 async def get_event(event_id: str):
     """Get event by ID with participant details"""
     try:
+        # Convert to ObjectId for MongoDB query
+        from bson import ObjectId
+        try:
+            query = {"_id": ObjectId(event_id)}
+        except:
+            query = {"id": event_id}
+        
         event = await get_document("events", {"id": event_id})
         if not event:
             raise HTTPException(
