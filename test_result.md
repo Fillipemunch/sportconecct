@@ -435,15 +435,18 @@ frontend:
 
   - task: "Authentication - User Login"
     implemented: true
-    working: "NA"
+    working: false
     file: "/app/frontend/src/pages/Auth.js"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: true
     status_history:
       - working: "NA"
         agent: "testing"
         comment: "Need to test user login functionality."
+      - working: false
+        agent: "testing"
+        comment: "Login functionality is not working correctly. Received a 401 error when attempting to login with existing credentials. However, registration and automatic login works."
 
   - task: "Authentication - Protected Routes"
     implemented: true
