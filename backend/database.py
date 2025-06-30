@@ -71,6 +71,18 @@ async def create_document(collection_name: str, document: dict):
 async def get_document(collection_name: str, query: dict):
     """Get a single document from a collection"""
     collection = await get_collection(collection_name)
+    
+    # If querying by id, convert to MongoDB ObjectId if needed
+    if 'id' in query:
+        try:
+            from bson import ObjectId
+            # Try to convert to ObjectId first
+            query['_id'] = ObjectId(query['id'])
+            del query['id']
+        except:
+            # If conversion fails, also try the original id field
+            pass
+    
     document = await collection.find_one(query)
     if document:
         document['id'] = str(document['_id'])
