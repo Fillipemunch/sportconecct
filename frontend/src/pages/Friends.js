@@ -209,7 +209,7 @@ const Friends = () => {
                 </Button>
               ) : (
                 <>
-                  <Button size="sm" variant="outline" disabled>
+                  <Button size="sm" variant="outline">
                     <MessageCircle size={14} />
                   </Button>
                   <Button 
