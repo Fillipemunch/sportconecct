@@ -886,7 +886,7 @@ async def remove_friend(
             detail="Failed to remove friend"
         )
 
-# Utility endpoint to clean test data (admin only)
+# Utility endpoint to clean ALL test data more thoroughly
 @api_router.delete("/admin/cleanup-test-data")
 async def cleanup_test_data(current_user: User = Depends(get_current_user)):
     """Clean up test data - admin only"""
@@ -906,35 +906,39 @@ async def cleanup_test_data(current_user: User = Depends(get_current_user)):
         client = AsyncIOMotorClient(mongo_url)
         db = client[os.environ['DB_NAME']]
         
-        # Delete test data
-        events_result = await db.events.delete_many({
-            "$or": [
-                {"title": {"$regex": "test", "$options": "i"}},
-                {"title_da": {"$regex": "test", "$options": "i"}}
-            ]
-        })
+        # Get real users (admin and recently registered legitimate users)
+        real_user_emails = [
+            "admin@sportconnect.dk",
+            "lars.andersen@email.dk", 
+            "maria.silva@gmail.com",
+            "erik.nielsen@outlook.dk"
+        ]
         
+        # Keep only real users - delete all others
         users_result = await db.users.delete_many({
-            "$or": [
-                {"name": {"$regex": "test", "$options": "i"}},
-                {"name": {"$regex": "cyej2r1l", "$options": "i"}},
-                {"email": {"$regex": "test", "$options": "i"}}
-            ]
+            "email": {"$nin": real_user_emails}
         })
         
+        # Delete all test events
+        events_result = await db.events.delete_many({})
+        
+        # Delete all messages
         messages_result = await db.messages.delete_many({})
+        
+        # Delete all friendships
         friendships_result = await db.friendships.delete_many({})
         
         client.close()
         
         return {
-            "message": "Test data cleaned successfully",
+            "message": "All test data cleaned successfully - only real registered users remain",
             "deleted": {
-                "users": users_result.deleted_count,
+                "test_users": users_result.deleted_count,
                 "events": events_result.deleted_count,
                 "messages": messages_result.deleted_count,
                 "friendships": friendships_result.deleted_count
-            }
+            },
+            "remaining_real_users": real_user_emails
         }
         
     except HTTPException:
