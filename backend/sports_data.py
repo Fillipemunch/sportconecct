@@ -41,6 +41,13 @@ SPORTS_DATA = [
         "name_da": "Fitness",
         "icon": "💪",
         "color": "#F97316"
+    },
+    {
+        "id": "skate",
+        "name": "Skate",
+        "name_da": "Skateboard",
+        "icon": "🛹",
+        "color": "#6366F1"
     }
 ]
 
