@@ -117,16 +117,59 @@ const Profile = () => {
     }
   };
 
-  const handleCancel = () => {
-    setEditForm({
-      name: user?.name || '',
-      age: user?.age || '',
-      location: user?.location || '',
-      bio: user?.bio || '',
-      sports: user?.sports || [],
-      skill_level: user?.skill_level || ''
-    });
-    setIsEditing(false);
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: t('common.error'),
+          description: 'Please select a valid image file',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: t('common.error'),
+          description: 'Image size must be less than 5MB',
+          variant: 'destructive'
+        });
+        return;
+      }
+
+      setUploadingImage(true);
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64Image = e.target.result;
+        setImagePreview(base64Image);
+        setEditForm(prev => ({ ...prev, photo: base64Image }));
+        setUploadingImage(false);
+        
+        toast({
+          title: t('common.success'),
+          description: 'Photo uploaded! Save changes to update your profile.'
+        });
+      };
+      
+      reader.onerror = () => {
+        setUploadingImage(false);
+        toast({
+          title: t('common.error'),
+          description: 'Failed to upload image',
+          variant: 'destructive'
+        });
+      };
+      
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerImageUpload = () => {
+    document.getElementById('photo-upload').click();
   };
 
   const toggleSport = (sportId) => {
