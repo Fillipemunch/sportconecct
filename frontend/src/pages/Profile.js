@@ -25,7 +25,9 @@ import {
   Plus,
   Check,
   X,
-  Loader2
+  Loader2,
+  Camera,
+  Upload
 } from 'lucide-react';
 
 const Profile = () => {
