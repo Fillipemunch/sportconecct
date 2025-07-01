@@ -47,7 +47,8 @@ const Profile = () => {
     location: user?.location || '',
     bio: user?.bio || '',
     sports: user?.sports || [],
-    skill_level: user?.skill_level || ''
+    skill_level: user?.skill_level || '',
+    photo: user?.photo || null
   });
 
   useEffect(() => {
