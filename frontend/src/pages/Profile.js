@@ -38,6 +38,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [sports, setSports] = useState([]);
   const [userStats, setUserStats] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const [editForm, setEditForm] = useState({
     name: user?.name || '',
